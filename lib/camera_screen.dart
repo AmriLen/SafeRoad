@@ -103,7 +103,6 @@ class _CameraScreenState extends State<CameraScreen> {
     'potted plant': 'Растение в горшке',
     'bed': 'Кровать',
     'dining table': 'Стол',
-    'toilet': 'Унитаз',
     'tv': 'Телевизор',
     'laptop': 'Ноутбук',
     'mouse': 'Мышь',
@@ -143,7 +142,7 @@ class _CameraScreenState extends State<CameraScreen> {
     
     try {
       await _flutterTts?.setLanguage("ru-RU");
-      await _flutterTts?.setSpeechRate(0.5);
+      await _flutterTts?.setSpeechRate(0.8);
       await _flutterTts?.setVolume(1.0);
       await _flutterTts?.setPitch(1.0);
       
@@ -244,14 +243,20 @@ class _CameraScreenState extends State<CameraScreen> {
   String _generateAnnouncement(DetectedObject obj) {
     String distanceText;
     
-    if (obj.distance < 1.5) {
-      distanceText = 'очень близко';
-    } else if (obj.distance < 3.0) {
-      distanceText = 'близко';
-    } else if (obj.distance < 6.0) {
-      distanceText = 'впереди';
+    if (obj.distance <= 1.0) {
+      distanceText = '1 метр';
+    } else if (obj.distance <= 2.0) {
+      distanceText = '2 метра';
+    } else if (obj.distance <= 3.0) {
+      distanceText = '3 метра';
+    } else if (obj.distance <= 3.0) {
+      distanceText = '4 метра';
+    } else if (obj.distance <= 3.0) {
+      distanceText = '5 метров';
+    } else if (obj.distance <= 6.0) {
+      distanceText = '6 метров';
     } else {
-      distanceText = 'далеко';
+      distanceText = 'Дальше';
     }
     
     // Для особо близких объектов добавляем предупреждение
@@ -262,21 +267,6 @@ class _CameraScreenState extends State<CameraScreen> {
     // Упрощаем фразу для лучшего восприятия
     return '${obj.name} $distanceText';
   }
-
-  // Добавляем метод для принудительного озвучивания
-  // void _announceCurrentObjects() {
-  //   if (!_isVoiceEnabled) return;
-    
-  //   _announcedObjects.clear(); // Сбрасываем историю
-  //   _announceObjects(); // Запускаем озвучивание
-    
-  //   ScaffoldMessenger.of(context).showSnackBar(
-  //     const SnackBar(
-  //       content: Text('Озвучивание текущих объектов'),
-  //       duration: Duration(seconds: 1),
-  //     ),
-  //   );
-  // }
 
   // Проверяем, является ли объект приоритетным для навигации
   bool _isPriorityObject(String objectName) {
@@ -299,27 +289,6 @@ class _CameraScreenState extends State<CameraScreen> {
     return 50;
   }
 
-  // String _generateAnnouncement(DetectedObject obj) {
-  //   String distanceText;
-    
-  //   if (obj.distance < 1.0) {
-  //     distanceText = 'очень близко';
-  //   } else if (obj.distance < 3.0) {
-  //     distanceText = 'близко';
-  //   } else if (obj.distance < 6.0) {
-  //     distanceText = 'впереди';
-  //   } else {
-  //     distanceText = 'далеко';
-  //   }
-    
-  //   // Для особо близких объектов добавляем предупреждение
-  //   if (obj.distance < 2.0) {
-  //     return 'Внимание! ${obj.name} $distanceText ${obj.direction}';
-  //   }
-    
-  //   return '${obj.name} $distanceText ${obj.direction}';
-  // }
-
   String _getObjectKey(DetectedObject obj) {
     return '${obj.name}_${obj.direction}_${(obj.distance ~/ 0.5)}';
   }
@@ -331,14 +300,18 @@ class _CameraScreenState extends State<CameraScreen> {
     
     if (_isVoiceEnabled) {
       _announcedObjects.clear();
+      _flutterTts!.speak("Озвучивание включено");
     } else {
       _flutterTts?.stop();
+      _flutterTts!.speak("Озвучивание выключено");
     }
     
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(_isVoiceEnabled ? 
-          'Озвучивание включено' : 'Озвучивание выключено'),
+          'Озвучивание включено' : 'Озвучивание выключено', textAlign: TextAlign.center, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),),
+          backgroundColor: _isVoiceEnabled ? 
+          Colors.green : Colors.red,
         duration: const Duration(seconds: 1),
       ),
     );
@@ -428,8 +401,9 @@ class _CameraScreenState extends State<CameraScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Навигационный помощник - Камера'),
+        title: const Text('Safe Way'),
         backgroundColor: Colors.blue,
+        foregroundColor: Colors.white,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
@@ -540,8 +514,8 @@ class _CameraScreenState extends State<CameraScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'LIVE | Объектов: ${_detectedObjects.length} | Кадр: $_frameCounter | ИИ: ${_isModelLoaded ? "АКТИВЕН" : "ОФФЛАЙН"} | Голос: ${_isVoiceEnabled ? "ВКЛ" : "ВЫКЛ"}',
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                    'LIVE | Объектов: ${_detectedObjects.length} | Кадр: $_frameCounter',
+                    style: const TextStyle(color: Colors.white, fontSize: 16),
                   ),
                 ),
               ],
@@ -564,9 +538,23 @@ class _CameraScreenState extends State<CameraScreen> {
   Widget _buildControlPanel() {
     return Container(
       padding: const EdgeInsets.all(20),
-      color: Colors.grey[100],
+      color: Colors.transparent, //Colors.grey[100],
       child: Column(
         children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              IconButton(
+                iconSize: 50,
+                onPressed: _toggleVoice,
+                icon: Icon(_isVoiceEnabled ? Icons.volume_up : Icons.volume_off),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _isVoiceEnabled ? Colors.lightGreen : Colors.red,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -576,37 +564,16 @@ class _CameraScreenState extends State<CameraScreen> {
               ),
               Row(
                 children: [
-                  _buildStatusChip('КАМЕРА', _isCameraActive ? Colors.green : Colors.orange),
+                  _buildStatusChip('КАМЕРА', _isCameraActive ? Colors.blue : Colors.orange),
                   const SizedBox(width: 5),
-                  _buildStatusChip('ИИ', _isModelLoaded ? Colors.green : Colors.red),
+                  _buildStatusChip('ИИ', _isModelLoaded ? Colors.blue : Colors.red),
                   const SizedBox(width: 5),
-                  _buildStatusChip('ГОЛОС', _isVoiceEnabled ? Colors.green : Colors.grey),
+                  _buildStatusChip('ГОЛОС', _isVoiceEnabled ? Colors.blue : Colors.red),
                 ],
               ),
             ],
           ),
           const SizedBox(height: 20),
-
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              IconButton(
-                onPressed: _toggleVoice,
-                icon: Icon(_isVoiceEnabled ? Icons.volume_up : Icons.volume_off),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _isVoiceEnabled ? Colors.blue : Colors.grey,
-                ),
-              ),
-              IconButton(
-                onPressed: _isCameraActive ? _manualDetection : null,
-                icon: const Icon(Icons.visibility),
-              ),
-              IconButton(
-                onPressed: _isCameraActive ? _checkDangers : null,
-                icon: const Icon(Icons.warning),
-              ),
-            ],
-          ),
         ],
       ),
     );
@@ -925,60 +892,6 @@ class _CameraScreenState extends State<CameraScreen> {
     if (normalizedX < 0.3) return 'слева';
     if (normalizedX > 0.7) return 'справа';
     return 'прямо';
-  }
-
-  void _manualDetection() {
-    if (_isCameraActive) {
-      _processRealFrame();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Ручное сканирование: ${_detectedObjects.length} объектов'),
-          duration: const Duration(seconds: 1),
-        ),
-      );
-    }
-  }
-
-  void _checkDangers() {
-    final dangers = _detectedObjects.where((obj) => obj.distance < 2.0).toList();
-
-    if (dangers.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Прямых опасностей не обнаружено'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } else {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Row(
-            children: [
-              Icon(Icons.warning, color: Colors.orange),
-              SizedBox(width: 10),
-              Text('Обнаружены близкие объекты'),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (final danger in dangers.take(5))
-                Text('• ${danger.name} в ${danger.distance.toStringAsFixed(1)}м (${danger.direction})'),
-              const SizedBox(height: 10),
-              const Text('Рекомендуется осторожность при движении.'),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Понятно'),
-            ),
-          ],
-        ),
-      );
-    }
   }
 
   void _stopCamera() {

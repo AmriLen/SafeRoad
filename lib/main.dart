@@ -32,8 +32,9 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Навигационный помощник'),
+        title: const Text('Safe Way'),
         backgroundColor: Colors.blue,
+        foregroundColor: Colors.white,
       ),
       body: Center(
         child: Padding(
@@ -41,24 +42,15 @@ class HomeScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.accessible_forward, size: 100, color: Colors.blue),
+              const Icon(Icons.settings_accessibility, size: 100, color: Colors.blue),
               const SizedBox(height: 30),
               const Text(
                 'Навигационный помощник\nдля слабовидящих',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 28,
+                  fontSize: 26,
                   fontWeight: FontWeight.bold,
                   color: Colors.blue,
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Реальная камера с компьютерным зрением\nдля помощи в навигации',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey,
                 ),
               ),
               const SizedBox(height: 40),
@@ -71,22 +63,13 @@ class HomeScreen extends StatelessWidget {
                 },
                 icon: const Icon(Icons.camera_alt),
                 label: const Text(
-                  'Запустить реальную камеру',
+                  'Запуск',
                   style: TextStyle(fontSize: 18),
                 ),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
                   backgroundColor: Colors.blue,
                   foregroundColor: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                '⚠️ Разрешите доступ к камере в браузере',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.orange,
                 ),
               ),
             ],
