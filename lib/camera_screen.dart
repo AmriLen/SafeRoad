@@ -3,11 +3,13 @@ import 'dart:math';
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:camera/camera.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:image/image.dart' as img;
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:just_audio/just_audio.dart';
 
 class CameraScreen extends StatefulWidget {
   const CameraScreen({super.key});
@@ -29,12 +31,16 @@ class _CameraScreenState extends State<CameraScreen> {
   Interpreter? _interpreter;
   bool _isProcessing = false;
   
-  // Добавляем переменные для озвучивания
+  // Переменные для озвучивания
   FlutterTts? _flutterTts;
   bool _isVoiceEnabled = true;
   Timer? _voiceTimer;
-  Set<String> _announcedObjects = {};
+  final Set<String> _announcedObjects = {};
   DateTime _lastVoiceTime = DateTime.now();
+
+  // Переменные для звуков
+  final player = AudioPlayer();
+  bool _isSoundEnabled = true;
 
   // Настройки модели
   static const String _modelPath = 'assets/ssd_mobilenet.tflite';
@@ -46,17 +52,14 @@ class _CameraScreenState extends State<CameraScreen> {
     'bicycle': 'Велосипед',
     'car': 'Автомобиль',
     'motorcycle': 'Мотоцикл',
-    'airplane': 'Самолет',
     'bus': 'Автобус',
     'train': 'Поезд',
     'truck': 'Грузовик',
-    'boat': 'Лодка',
     'traffic light': 'Светофор',
     'fire hydrant': 'Пожарный гидрант',
     'stop sign': 'Знак стоп',
     'parking meter': 'Парковочный счетчик',
     'bench': 'Скамейка',
-    'bird': 'Птица',
     'cat': 'Кошка',
     'dog': 'Собака',
     'horse': 'Лошадь',
@@ -66,61 +69,16 @@ class _CameraScreenState extends State<CameraScreen> {
     'bear': 'Медведь',
     'zebra': 'Зебра',
     'giraffe': 'Жираф',
-    'backpack': 'Рюкзак',
-    'umbrella': 'Зонт',
-    'handbag': 'Сумка',
-    'tie': 'Галстук',
-    'suitcase': 'Чемодан',
-    'frisbee': 'Фрисби',
-    'skis': 'Лыжи',
-    'snowboard': 'Сноуборд',
     'sports ball': 'Мяч',
-    'kite': 'Воздушный змей',
-    'baseball bat': 'Бейсбольная бита',
-    'baseball glove': 'Бейсбольная перчатка',
     'skateboard': 'Скейтборд',
-    'surfboard': 'Доска для серфинга',
-    'tennis racket': 'Теннисная ракетка',
-    'bottle': 'Бутылка',
-    'wine glass': 'Бокал',
-    'cup': 'Чашка',
-    'fork': 'Вилка',
-    'knife': 'Нож',
-    'spoon': 'Ложка',
-    'bowl': 'Миска',
-    'banana': 'Банан',
-    'apple': 'Яблоко',
-    'sandwich': 'Сэндвич',
-    'orange': 'Апельсин',
-    'broccoli': 'Брокколи',
-    'carrot': 'Морковь',
-    'hot dog': 'Хот-дог',
-    'pizza': 'Пицца',
-    'donut': 'Пончик',
-    'cake': 'Торт',
     'chair': 'Стул',
     'couch': 'Диван',
     'potted plant': 'Растение в горшке',
     'bed': 'Кровать',
     'dining table': 'Стол',
     'tv': 'Телевизор',
-    'laptop': 'Ноутбук',
-    'mouse': 'Мышь',
-    'remote': 'Пульт',
-    'keyboard': 'Клавиатура',
-    'cell phone': 'Телефон',
-    'microwave': 'Микроволновка',
-    'oven': 'Духовка',
-    'toaster': 'Тостер',
     'sink': 'Раковина',
     'refrigerator': 'Холодильник',
-    'book': 'Книга',
-    'clock': 'Часы',
-    'vase': 'Ваза',
-    'scissors': 'Ножницы',
-    'teddy bear': 'Плюшевый мишка',
-    'hair drier': 'Фен',
-    'toothbrush': 'Зубная щетка',
   };
 
   // Приоритетные объекты для навигации (более важные объекты)
@@ -135,6 +93,8 @@ class _CameraScreenState extends State<CameraScreen> {
     _initializeTTS();
     _initializeApp();
     WakelockPlus.enable();
+    _flutterTts!.speak("Запуск помощника");
+    HapticFeedback.heavyImpact();
   }
 
   Future<void> _initializeTTS() async {
@@ -172,8 +132,15 @@ class _CameraScreenState extends State<CameraScreen> {
 
   // Улучшаем логику озвучивания
   Future<void> _announceObjects() async {
+    AudioPlayer().stop();
     if (!_isVoiceEnabled || _flutterTts == null || !mounted) return;
-    
+
+    if (_isSoundEnabled) {
+      player.setAsset('assets/warn.mp3');
+      player.setVolume(1);
+      player.play();
+    }
+
     final now = DateTime.now();
     // Увеличиваем интервал между озвучиваниями
     if (now.difference(_lastVoiceTime).inSeconds < 1) return;
@@ -203,7 +170,6 @@ class _CameraScreenState extends State<CameraScreen> {
         // Проверяем, достаточно ли объект значим для озвучивания
         if (_shouldAnnounceObject(nearestObject)) {
           final announcement = _generateAnnouncement(nearestObject);
-          
           debugPrint('Озвучивание: $announcement');
           
           await _flutterTts!.speak(announcement);
@@ -216,6 +182,7 @@ class _CameraScreenState extends State<CameraScreen> {
             _announcedObjects.clear();
             _announcedObjects.addAll(temp);
           }
+          
         }
       }
     } catch (e) {
@@ -226,13 +193,13 @@ class _CameraScreenState extends State<CameraScreen> {
   // Проверяем, стоит ли озвучивать объект
   bool _shouldAnnounceObject(DetectedObject obj) {
     // Озвучиваем только если объект достаточно уверенно распознан
-    if (obj.confidence < 0.6) return false;
+    if (obj.confidence < 0.4) return false;
     
     // Озвучиваем близкие объекты чаще
-    if (obj.distance < 3.0) return true;
+    if (obj.distance < 6.0) return true;
     
     // Для далеких объектов озвучиваем только приоритетные
-    if (obj.distance >= 3.0) {
+    if (obj.distance >= 6.0) {
       return _getObjectPriority(obj.name) >= 70;
     }
     
@@ -271,7 +238,7 @@ class _CameraScreenState extends State<CameraScreen> {
   // Проверяем, является ли объект приоритетным для навигации
   bool _isPriorityObject(String objectName) {
     final englishName = _russianLabels.entries
-        .firstWhere((entry) => entry.value == objectName, orElse: () => MapEntry('', ''))
+        .firstWhere((entry) => entry.value == objectName, orElse: () => const MapEntry('', ''))
         .key;
     return _priorityObjects.contains(englishName) || objectName.contains('человек') || objectName.contains('авто');
   }
@@ -279,7 +246,7 @@ class _CameraScreenState extends State<CameraScreen> {
   // Получаем приоритет объекта (чем выше число, тем выше приоритет)
   int _getObjectPriority(String objectName) {
     final englishName = _russianLabels.entries
-        .firstWhere((entry) => entry.value == objectName, orElse: () => MapEntry('', ''))
+        .firstWhere((entry) => entry.value == objectName, orElse: () => const MapEntry('', ''))
         .key;
     
     if (englishName == 'person') return 100;
@@ -309,8 +276,32 @@ class _CameraScreenState extends State<CameraScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(_isVoiceEnabled ? 
-          'Озвучивание включено' : 'Озвучивание выключено', textAlign: TextAlign.center, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),),
+          'Озвучивание включено' : 'Озвучивание выключено', textAlign: TextAlign.center, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),),
           backgroundColor: _isVoiceEnabled ? 
+          Colors.green : Colors.red,
+        duration: const Duration(seconds: 1),
+      ),
+    );
+  }
+
+  void _toggleSound() {
+    setState(() {
+      _isSoundEnabled = !_isSoundEnabled;
+    });
+    
+    if (_isSoundEnabled) {
+      _announcedObjects.clear();
+      _flutterTts!.speak("Звуки включены");
+    } else {
+      _flutterTts?.stop();
+      _flutterTts!.speak("Звуки выключены");
+    }
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(_isSoundEnabled ? 
+          'Звуки включены' : 'Звуки выключены', textAlign: TextAlign.center, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),),
+          backgroundColor: _isSoundEnabled ? 
           Colors.green : Colors.red,
         duration: const Duration(seconds: 1),
       ),
@@ -550,6 +541,14 @@ class _CameraScreenState extends State<CameraScreen> {
                 icon: Icon(_isVoiceEnabled ? Icons.volume_up : Icons.volume_off),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _isVoiceEnabled ? Colors.lightGreen : Colors.red,
+                ),
+              ),
+              IconButton(
+                iconSize: 50,
+                onPressed: _toggleSound,
+                icon: Icon(_isSoundEnabled ? Icons.music_note : Icons.music_off),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _isSoundEnabled ? Colors.lightGreen : Colors.red,
                 ),
               ),
             ],
@@ -963,7 +962,7 @@ class ObjectDetectionPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3;
 
-    final textStyle = const TextStyle(
+    const textStyle = TextStyle(
       color: Colors.white,
       fontSize: 14,
       fontWeight: FontWeight.bold,
@@ -994,7 +993,7 @@ class ObjectDetectionPainter extends CustomPainter {
       
       canvas.drawRect(rect, paint);
 
-      final text = '${obj.name} ${obj.distance.toStringAsFixed(1)}м';
+      final text = '${obj.name} ${obj.distance.toStringAsFixed(1)}м ${obj.confidence}';
       textPainter.text = TextSpan(
         text: text,
         style: textStyle,
